@@ -54,11 +54,14 @@ class SolRExportMapper(ExportMapper):
 
     def _field_to_solr(self, field, field_type, relation, included_relations, oe_vals=None, solr_vals=None):
 
-        #_logger.info('TOTOTOT\n %s %s \n'%(field, field_type))
         if not oe_vals:
             oe_vals = {}
         if not solr_vals:
             solr_vals = {}
+
+        if field is 'image_medium':
+            solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
+
         if field_type in ('char', 'text', 'integer', 'float') and oe_vals.get(field):
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
         elif field_type == 'boolean':
