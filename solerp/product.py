@@ -30,6 +30,7 @@ from .unit.mapper import SolRExportMapper
 class ProductExporter(SolRExportSynchronizer):
     _model_name = ['product.product']
 
+
 @solr
 class ProductDeleter(SolRDeleteSynchronizer):
     _model_name = ['product.product']

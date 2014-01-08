@@ -28,6 +28,7 @@ from openerp.addons.connector.unit.mapper import (
 from ..backend import solr
 
 import logging
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class SolRExportMapper(ExportMapper):
         return {
             'char': "%s_s",
             'text': "%s_s",
+            'serialized': "%s_json",
             'integer': "%s_i",
             'binary': "%s_bin",
             'float': "%s_f",
@@ -64,6 +66,10 @@ class SolRExportMapper(ExportMapper):
 
         if field_type in ('char', 'text', 'integer', 'float') and oe_vals.get(field):
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
+
+        elif field_type == 'serialized':
+            solr_vals[self._solr_key(field_type) % (field, )] = json.dumps(oe_vals.get(field))
+
         elif field_type == 'boolean':
             solr_vals[self._solr_key(field_type)] = oe_vals.get(field)
         elif field_type == 'many2one' and oe_vals.get(field):
