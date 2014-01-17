@@ -1,3 +1,4 @@
+#coding:utf-8
 # This is an example configuration file to export products on SolR
 # you can include it in the __init__.py and also add the dependency upon the 'product' module in __openerp__.py to test it.
 # of course, you would usually define such configuration in custom modules.
@@ -37,7 +38,8 @@ class ProductDeleter(SolRDeleteSynchronizer):
 
 @solr
 class ProductExportMapper(SolRExportMapper):
-   _model_name = ['product.product']
+    _model_name = ['product.product']
+
 
 @on_record_write(model_names='product.product')
 def solr_product_modified(session, model_name, record_id, fields=None):

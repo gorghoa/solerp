@@ -36,7 +36,7 @@ def solr_key(field_type):
     """ modeled after Sunspot dynamic fields: https://github.com/sunspot/sunspot/blob/master/sunspot_solr/solr/solr/conf/schema.xml """
     return {
             'char': "%s_s",
-            'text': "%s_text",
+            'text': "%s_s",
             'integer': "%s_i",
             'date': "%s_d",
             'datetime': "%s_dt",
@@ -59,9 +59,10 @@ class SolRExportMapper(ExportMapper):
         return []
 
     def _solr_key(self, field_type):
-        return "%ss" % (solr_key(field_type),) #TODO only add s if field is stored
+        return "%s" % (solr_key(field_type),) #TODO only add s if field is stored
 
     def _field_to_solr(self, field, field_type, relation, included_relations, oe_vals=None, solr_vals=None):
+
 
         if not oe_vals:
             oe_vals = {}
@@ -71,12 +72,11 @@ class SolRExportMapper(ExportMapper):
         if field is 'image_medium':
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
 
-        if field_type in ('char', 'text', 'integer', 'float', 'boolean') and oe_vals.get(field):
+        elif field_type in ('char', 'text', 'integer', 'float', 'boolean') and oe_vals.get(field):
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
 
         elif field_type == 'serialized':
             solr_vals[self._solr_key(field_type) % (field, )] = json.dumps(oe_vals.get(field))
-
 
         elif field_type == 'many2one' and oe_vals.get(field):
             val = oe_vals.get(field)
@@ -104,7 +104,21 @@ class SolRExportMapper(ExportMapper):
             solr_vals["%s_sm" % (field,)] = values #TODO store ids?
         return solr_vals
 
+
+    """
+    def map_record(self,record,*args,**kwargs):
+        values = super(SolRExportMapper, self).map_record(record,*args,**kwargs)
+        values = self.oe
+        print record,values.values(),"\n\nGOD DAMN SHIT"
+        return values
+    """
+    @mapping
+    def any(self,record):
+
+        return self.oe_to_solr(record)
+
     def oe_to_solr(self, record, fields=None):
+
         return self._oe_to_solr(record, fields)
 
     def _oe_to_solr(self, record, fields=None):
@@ -136,7 +150,3 @@ class SolRExportMapper(ExportMapper):
 
     def _slug(self, record): #NOTE in an SEO/web prospective, mais SolR id is a name instead of of the OpenERP id
         return "/".join(self._slug_parts(record))
-
-    def convert(self, record, fields=None):
-        self._convert(record, fields)
-        self._data.update(self.oe_to_solr(record, fields))
