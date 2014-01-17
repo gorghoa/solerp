@@ -32,6 +32,24 @@ import json
 
 _logger = logging.getLogger(__name__)
 
+def solr_key(field_type):
+    """ modeled after Sunspot dynamic fields: https://github.com/sunspot/sunspot/blob/master/sunspot_solr/solr/solr/conf/schema.xml """
+    return {
+            'char': "%s_s",
+            'text': "%s_text",
+            'integer': "%s_i",
+            'date': "%s_d",
+            'datetime': "%s_dt",
+            'binary': "%s_bin", #useful?
+            'float': "%s_f",
+            'boolean': "%s_b",
+            'many2one': "%s_s",
+            'one2many': "%s_sm",
+            'many2many': "%s_sm",
+            'serialized': "%s_json",
+    }.get(field_type, "%s_s")
+
+
 class SolRExportMapper(ExportMapper):
 
     def _get_included_relations(self, record):
@@ -41,18 +59,7 @@ class SolRExportMapper(ExportMapper):
         return []
 
     def _solr_key(self, field_type):
-        return {
-            'char': "%s_s",
-            'text': "%s_s",
-            'serialized': "%s_json",
-            'integer': "%s_i",
-            'binary': "%s_bin",
-            'float': "%s_f",
-            'boolean': "%s_b",
-            'many2one': "%s_s",
-            'one2many': "%s_sm",
-            'many2many': "%s_sm",
-        }.get(field_type, "%s_s")
+        return "%ss" % (solr_key(field_type),) #TODO only add s if field is stored
 
     def _field_to_solr(self, field, field_type, relation, included_relations, oe_vals=None, solr_vals=None):
 
@@ -64,14 +71,13 @@ class SolRExportMapper(ExportMapper):
         if field is 'image_medium':
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
 
-        if field_type in ('char', 'text', 'integer', 'float') and oe_vals.get(field):
+        if field_type in ('char', 'text', 'integer', 'float', 'boolean') and oe_vals.get(field):
             solr_vals[self._solr_key(field_type) % (field, )] = oe_vals.get(field)
 
         elif field_type == 'serialized':
             solr_vals[self._solr_key(field_type) % (field, )] = json.dumps(oe_vals.get(field))
 
-        elif field_type == 'boolean':
-            solr_vals[self._solr_key(field_type)] = oe_vals.get(field)
+
         elif field_type == 'many2one' and oe_vals.get(field):
             val = oe_vals.get(field)
             obj = self.session.pool[relation]
@@ -86,7 +92,7 @@ class SolRExportMapper(ExportMapper):
             if field in included_relations:
                 field_res_id = solr_vals["%s_i" % (field,)]
                 included_record = obj.browse(self.session.cr, self.session.uid, field_res_id, context=self.session.context)
-                solr_values = self._oe_to_solr(record) #TODO find object specific Mapper ?
+                solr_values = self._oe_to_solr(included_record) #TODO find object specific Mapper ?
                 for rel_k in solr_values.keys():
                     if rel_k != "id" and rel_k != "text":
                         solr_vals["%s_%s" % (field, rel_k)] = solr_values[rel_k]
@@ -108,7 +114,7 @@ class SolRExportMapper(ExportMapper):
         included_relations = self._get_included_relations(record)
         skipped_fields = self._get_skipped_fields(record) #TODO use them + refactor
         solr_vals = {}
-        solr_vals["id"] = "%s-%s" % (self.backend_record.name, record.id)
+        solr_vals["id"] = "%s %s %s" % (self.backend_record.name, model._name.replace('.', '-'), record.id)
         solr_vals["slug_s"] = self._slug(record)
         solr_vals["object_s"] = model._name
         solr_vals["text"] = oe_vals.get(model._rec_name) #TODO change or remove?
@@ -117,7 +123,7 @@ class SolRExportMapper(ExportMapper):
         return solr_vals
 
     def _urlencode(self, word):
-        return unidecode(word).lower().strip().replace(".", "-").replace(" ", "-").replace("'", "-").replace(",", "").replace("--", "-").replace("---", "-")
+        return unidecode(word).lower().strip().replace(".", "-").replace(" ", "-").replace("'", "-").replace(",", "").replace("--", "-").replace("---", "-").replace("/", "-").replace("&", "e")
 
     def _slug_parts(self, record):
         raw_name = getattr(record, record._model._rec_name)
